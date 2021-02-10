@@ -1,0 +1,43 @@
+version: '3.6'
+
+# Is a config file
+# in .yml INDENTATION is important
+services:
+    # --BACKEND API--
+    smart-brain-api:
+        container_name: backend
+        # image file isnt needed since we will be building from OWN dockerfile image
+        # image: node:12.16.3
+        # Build allows us to build from our own Dockerfile instead of a default image
+        build: ./
+        command: npm start
+        working_dir: /usr/src/smart-brain-api
+        # environment variables
+        environment: 
+            POSTGRES_URI: postgres://dbuser:secret@postgres:5432/smart-brain-docker
+        links: 
+            - postgres
+        ports: 
+            - "3000:3000"
+        # This will allow us to map the host file system- making it easier to make changes in the files
+        volumes:
+            - ./:/usr/src/smart-brain-api
+        
+    # --Postgres--
+    postgres:
+        # container_name: postgres
+        environment: 
+            POSTGRES_USER: dbuser
+            POSTGRES_PASSWORD: secret
+            POSTGRES_DB: smart-brain-docker
+            # because local host doesnt exsist with the container itself you need to link it to the postgre api
+            POSTGRES_HOST: postgres
+        # the postgres image from dockerhub is called "postgres"
+        # image: postgres
+        # we dont need postgres image as we have created schema- so we build from the folder postgres
+        build: ./postgres
+        # - port forwarding
+        ports:
+            - "5432:5432"
+
+        
