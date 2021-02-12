@@ -11,6 +11,24 @@ const handleProfileGet = (req, res, db) => {
     .catch(err => res.status(400).json('error getting user'))
 }
 
+const handleProfileUpdate = (req,res,db)=> {
+  const {id} = req.params
+  const {name,age,pet} = req.body.formInput;
+  // Knex.js
+  db('users')
+    .where({id:id})
+    .update({name:name, age:age, pet:pet})
+    .then(res=>{
+      if(res){
+        res.json("success")
+      } else {
+        res.status(400).json('unable to update')
+      }
+    })
+    .catch(err => res.status(400).json('error updating user'))
+}
+
 module.exports = {
-  handleProfileGet
+  handleProfileGet,
+  handleProfileUpdate
 }
