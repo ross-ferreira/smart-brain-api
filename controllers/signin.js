@@ -1,4 +1,9 @@
 const jwt = require("jsonwebtoken");
+const redis = require("redis");
+
+//setup Redis:
+// When it get moves to docker or another location you need to update host
+const redisClient = redis.createClient(process.env.REDIS_URI);
 
 const handleSignin = (db, bcrypt, req, res) => {
   const { email, password } = req.body;
@@ -25,8 +30,14 @@ const handleSignin = (db, bcrypt, req, res) => {
     .catch((err) => Promise.reject("wrong credentials"));
 };
 
-const getAuthTokenId = () => {
-  console.log("auth ok");
+const getAuthTokenId = (req,res) => {
+  const {authorization} = req.headers;
+  return redisClient.get(authorization,(err,reply)=>{
+    if(err || !reply){
+      return res.status(400).json('Unauthorized')
+    }
+    return res.json({id:reply})
+  })
 };
 
 const signToken = (email) => {
@@ -36,17 +47,29 @@ const signToken = (email) => {
   return jwt.sign(jwtPayload, "JWT_Secret", { expiresIn: "2 days" });
 };
 
+// Save token in redis DB
+const setToken = (key, value) => {
+  // check promises in Redis documentation
+  // we need to wrap the it in a promise as the result wont be a promise
+  return Promise.resolve(redisClient.set(key, value));
+};
+
 const createSessions = (user) => {
   // JWT, return user data
   const { email, id } = user;
   const token = signToken(email);
-  return { sucess: true, userId: id, token: token };
+  return setToken(token, id)
+    .then(() => {
+      return { success: "true", userId: id, token: token };
+    })
+    .catch((err) => console.log(err));
 };
 
 const signinAuthentication = (db, bcrypt) => (req, res) => {
   const { authorization } = req.headers;
+  // If the user sends an Authorization token otherwise signin
   return authorization
-    ? getAuthTokenId()
+    ? getAuthTokenId(req,res)
     : handleSignin(db, bcrypt, req, res)
         // Extra gaurd Clause to check user credentials exsist
         .then((data) =>
